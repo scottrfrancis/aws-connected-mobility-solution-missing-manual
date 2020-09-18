@@ -68,20 +68,26 @@ def getDeviceIdFromVin(es, vin):
   
   return deviceid
     
-deviceid = getDeviceIdFromVin(es, vin)
-print(f'Found thing name: {deviceid} for VIN: {vin}')
-
 def deleteDocsFromIndex(es, index, key, val):
   try:
     res = es.search(index=index, body={'query':{'match': {key:val}}} )
     [ es.delete(index=index, id=r['_id']) for r in res['hits']['hits'] ]
   except Exception as e:
     pass
+  
+vins = [vin]
+if vin == 'all':
+  res = es.search(index='shared_cardata', body={'query':{'match_all':{}}}, size=1000)
+  vins = [ r['_source']['vin'] for r in res['hits']['hits'] ]
+  
+for v in vins:
+  deviceid = getDeviceIdFromVin(es, vin)
+  print(f'Found thing name: {deviceid} for VIN: {vin}')
 
-indices = es.cat.indices(format='json') 
-[ deleteDocsFromIndex(es, i['index'], 'deviceid', deviceid) for i in indices]
+  indices = es.cat.indices(format='json') 
+  [ deleteDocsFromIndex(es, i['index'], 'deviceid', deviceid) for i in indices]
 
-[ deleteDocsFromIndex(es, i['index'], 'vin', vin) for i in indices ]
+  [ deleteDocsFromIndex(es, i['index'], 'vin', vin) for i in indices ]
 
 # dump all
 # [ print(es.search(index=i['index'], body={'query':{'match_all':{}}})) for i in indices  ]  
