@@ -136,6 +136,13 @@ export CDF_CORE_STACK_NAME=cdf-core-$ENV_NAME
 ```
 trying to work around a stuck elastic search deployment by making environment 'dev' instead of 'development'
 
+.. AND ANOTHER UPDATE:
+```bash
+cd cdf-auto-solution/source
+
+./infrastructure/deploy-full.bash -b $BUILD_BUCKET -h $ADMIN_EMAIL -B -R $REGION -K $KEY_OWNER -e $ENV_NAME -P default -p $KEY_PAIR
+```
+
 ## Rollback and undoing
 
 1. Delete the CMS and CDF root stacks -- they should delete all components

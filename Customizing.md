@@ -49,6 +49,21 @@ Due to the number of services and their interactions, it is recommended to alway
 
 _Consult the `dataGen.sh` script_
 
+**Preparation**
+The `dataGen.sh` script uses the environment variables `$MGR_ENDPOINT, $CERT_ID, $MAPBOX_TOKEN`. Set these prior to calling the script.
+```bash
+REGION=$(aws configure get region)
+MGR_ID=$(aws apigateway get-rest-apis --query "items[?contains(name,'SimulationManager')].id" --output text)
+STAGE='Prod'
+export MGR_ENDPOINT=https://$MGR_ID.execute-api.$REGION.amazonaws.com/$STAGE
+
+STACK_NAME='cms-dev'
+export CERT_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='CertificateId'].OutputValue" --output text)
+
+export MAPBOX_TOKEN='<your mapbox token>'
+```
+
+
 In calling the manager provisioning API, a JSON body is POSTed to the endpoint. A couple properties of interest in that body include:
 * `.deviceCount` - a number of devices to provision
 * `tasks.provisioning.attributes.region[1,2]` - two geo boxes, with `weight` properties to distribute the `.deviceCount` devices among
@@ -58,6 +73,13 @@ You might want to modify the lat/lon min/max properties as well as weights.
 
 Monitor the `cdf/+/activate/accepted` topic and keep track of the pairings so you know when the simulators have been provisioned and paired. 
 You may also see traffice on `cdf/assetlibrary/+` as the various relationships (users, groups, suppliers, etc) are provisioned.
+Monitor `dt/cvra/+/cardata` for the INITIAL telemetry messages that position the cars on the map.
+
+```bash
+export SIM_ID=$(./dataGen.sh | tr -d '\r')
+```
+
+Saves the `$SIM_ID` for later use to START the sim (this value can also be looked up in DynamoDB).
 
 **Provisioning can take 5 - 10 minutes or more**
 

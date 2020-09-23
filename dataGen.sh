@@ -38,4 +38,5 @@ curl --include --silent --location --request POST "$MGR_ENDPOINT/simulations" \
             }
         }
     }
-}" | grep 'location' | cut -d"/" -f3
+}" 
+#| grep 'location' | cut -d"/" -f3

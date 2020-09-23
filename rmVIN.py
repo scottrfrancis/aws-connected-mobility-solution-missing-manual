@@ -8,8 +8,9 @@ pip3 install requests-aws4auth
 """
 
 import argparse
-from elasticsearch import Elasticsearch, RequestsHttpConnection
 import logging
+
+from elasticsearch import Elasticsearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
 import boto3
 import requests
@@ -42,11 +43,9 @@ service = 'es'
 def getClient(endpoint, region):
     credentials = boto3.Session().get_credentials()
     awsauth = AWS4Auth(credentials.access_key, credentials.secret_key, region, service, session_token=credentials.token)
-
     es = Elasticsearch(hosts=[{'host': endpoint, 'port': 443}],
             http_auth = awsauth, use_ssl = True, verify_certs = True,
             connection_class = RequestsHttpConnection )
-    
     return es
 
 es = getClient(endpoint, region)
@@ -67,28 +66,36 @@ def getDeviceIdFromVin(es, vin):
       deviceid = None
   
   return deviceid
-    
+
 def deleteDocsFromIndex(es, index, key, val):
   try:
     res = es.search(index=index, body={'query':{'match': {key:val}}} )
     [ es.delete(index=index, id=r['_id']) for r in res['hits']['hits'] ]
   except Exception as e:
     pass
-  
+
 vins = [vin]
 if vin == 'all':
-  res = es.search(index='shared_cardata', body={'query':{'match_all':{}}}, size=1000)
+  res = es.search(index='shared_cardata', body={'query':{'match_all':{}}}, size=1000 )
   vins = [ r['_source']['vin'] for r in res['hits']['hits'] ]
   
+if vin == 'none':
+  vins = []
+
 for v in vins:
-  deviceid = getDeviceIdFromVin(es, vin)
-  print(f'Found thing name: {deviceid} for VIN: {vin}')
+  deviceid = getDeviceIdFromVin(es, v)
+  print(f'Found thing name: {deviceid} for VIN: {v}')
 
   indices = es.cat.indices(format='json') 
   [ deleteDocsFromIndex(es, i['index'], 'deviceid', deviceid) for i in indices]
+  
+  [ deleteDocsFromIndex(es, i['index'], 'vin', v) for i in indices ]
 
-  [ deleteDocsFromIndex(es, i['index'], 'vin', vin) for i in indices ]
+indices = es.cat.indices(format='json')
+print("index - doc count")
+[ print(f"{i['index']} - {i['docs.count']}") for i in indices ] 
 
 # dump all
-# [ print(es.search(index=i['index'], body={'query':{'match_all':{}}})) for i in indices  ]  
+print("all items by index")
+[ print(es.search(index=i['index'], body={'query':{'match_all':{}}})) for i in indices  ]  
 
