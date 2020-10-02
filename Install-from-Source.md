@@ -2,11 +2,11 @@
 
 **NB: all commands BASH shell**
 
-2. Created Cloud9 env in us-east-1 (region to be used for all deployment)
+1. Created Cloud9 env in us-east-1 (region to be used for all deployment)
     -- t3.xl (to speed building, otherwise t3.small is fine); Ubuntu 18.04
     -- shutdown and expand EFS volume -- 25GB -- and restart
-3. Will follow 'approach 1' from the [CMS Developmet Guide](https://quip-amazon.com/hLrnALX7bgCd/CMS-Development)
-4. Install Dependencies
+2. Will follow 'approach 1' from the [CMS Developmet Guide](https://quip-amazon.com/hLrnALX7bgCd/CMS-Development)
+3. Install Dependencies
 
     * pnmp@3.5.3, nvm for Node@12.18.2, jq 
 
@@ -21,9 +21,9 @@ sudo apt install -y jq
 
 * aws cli@v2, python3@3.6.9, docker@19.03.13, git@2.17.1 -- already installed
 
-5. Have CSV credentials for code repos handy to copy/paste when cloning repos
+4. Have CSV credentials for code repos handy to copy/paste when cloning repos
 
-6. Clone Repos as per the Quip doc (copy/paste credentials when asked)
+5. Clone Repos as per the Quip doc (copy/paste credentials when asked)
 
 (copied from quip guide)
 
@@ -36,7 +36,7 @@ git clone https://git-codecommit.us-west-2.amazonaws.com/v1/repos/cdf-auto-solut
 git clone https://git-codecommit.us-west-2.amazonaws.com/v1/repos/cdf-infrastructure-demo
 ```
 
-7. Build CMS (takes about 10 min)
+6. Build CMS (takes about 10 min)
 
 ```bash
 cd ~/environment/cdf-auto-solution/source
@@ -44,7 +44,7 @@ cd ~/environment/cdf-auto-solution/source
 ./bundle.bash
 ```
 
-8. Build CDF (another 10 min)
+7. Build CDF (another 10 min)
 
 ```bash
 cd ~/environment/cdf-core/source
@@ -54,7 +54,7 @@ cd ~/environment/cdf-core/source
 
 #### Approach 1 - deploy CDF and CMS separately
 
-9. Prep Env Vars
+8. Prep Env Vars
 
 ```bash
 export env_name=development
@@ -67,7 +67,7 @@ export kms_key_owner=$(aws iam get-user --query 'User.UserName' --output text)
 export cms_admin_email=PASTE YOUR EMAIL HERE
 ```
 
-10. CDF
+9. CDF
 
 * create Deployment Bucket
 
@@ -108,7 +108,7 @@ cd ~/environment/cdf-auto-solution/source
 Await completion -- again about 30 minutes
 The email given above should receive the activation email for FleetManager UI.
 
-11. Run Simulation Manager
+10. Run Simulation Manager
 
 * Fetch some parameters
 
