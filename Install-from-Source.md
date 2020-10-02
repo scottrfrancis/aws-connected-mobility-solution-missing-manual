@@ -3,11 +3,11 @@
 **NB: all commands BASH shell**
 
 1. Fresh Isengard Account
-3. Created Cloud9 env in us-east-1 (region to be used for all deployment)
+2. Created Cloud9 env in us-east-1 (region to be used for all deployment)
     -- t3.xl (to speed building, otherwise t3.small is fine); Ubuntu 18.04
     -- shutdown and expand EFS volume -- 25GB -- and restart
-4. Will follow 'approach 1' from the [CMS Developmet Guide](https://quip-amazon.com/hLrnALX7bgCd/CMS-Development)
-5. Install Dependencies
+3. Will follow 'approach 1' from the [CMS Developmet Guide](https://quip-amazon.com/hLrnALX7bgCd/CMS-Development)
+4. Install Dependencies
 
     * pnmp@3.5.3, nvm for Node@12.18.2, jq 
 
@@ -20,12 +20,14 @@ npm install -g pnpm@3.5.3
 sudo apt install -y jq
 ```
 
-
 * aws cli@v2, python3@3.6.9, docker@19.03.13, git@2.17.1 -- already installed
-    
-6. Have CSV credentials for code repos handy to copy/paste when cloning repos 
-7. Clone Repos as per the Quip doc (copy/paste credentials when asked)
+
+5. Have CSV credentials for code repos handy to copy/paste when cloning repos
+
+6. Clone Repos as per the Quip doc (copy/paste credentials when asked)
+
 (copied from quip guide)
+
 ```bash
 # first time only
 git config --global credential.helper store
@@ -35,8 +37,7 @@ git clone https://git-codecommit.us-west-2.amazonaws.com/v1/repos/cdf-auto-solut
 git clone https://git-codecommit.us-west-2.amazonaws.com/v1/repos/cdf-infrastructure-demo
 ```
 
-
-8. Build CMS (takes about 10 min)
+7. Build CMS (takes about 10 min)
 
 ```bash
 cd ~/environment/cdf-auto-solution/source
@@ -44,7 +45,7 @@ cd ~/environment/cdf-auto-solution/source
 ./bundle.bash
 ```
 
-9. Build CDF (another 10 min)
+8. Build CDF (another 10 min)
 
 ```bash
 cd ~/environment/cdf-core/source
@@ -53,7 +54,8 @@ cd ~/environment/cdf-core/source
 ```
 
 #### Approach 1 - deploy CDF and CMS separately
-10. Prep Env Vars
+
+9. Prep Env Vars
 
 ```bash
 export env_name=development
@@ -66,8 +68,10 @@ export kms_key_owner=$(aws iam get-user --query 'User.UserName' --output text)
 export cms_admin_email=PASTE YOUR EMAIL HERE
 ```
 
-11. CDF
+10. CDF
+
 * create Deployment Bucket
+
 ```bash
 export acct_id=$(aws sts get-caller-identity --query 'Account' --output text)
 
@@ -75,6 +79,7 @@ export s3_bucket_name=$(aws s3api create-bucket --bucket cms-demo-refactored-$ac
 ```
 
 * create EC2 keypair
+
 ```bash
 export keypair_name=myDemoKP
 rm -f ~/.ssh/$keypair_name.pem
@@ -84,6 +89,7 @@ chmod 400 ~/.ssh/$keypair_name.pem
 ```
 
 **DEPLOY**
+
 ```bash
 cd ~/environment/cdf-core/source
 ./infrastructure/deploy-core.bash -e $env_name -b $s3_bucket_name -p $keypair_name -R $region -P $aws_profile -B -y s3://$s3_bucket_name/template-snippets/ -i 0.0.0.0/0 -K $kms_key_owner
@@ -99,12 +105,14 @@ export cdf_core_stack_name=cdf-core-$env_name
 cd ~/environment/cdf-auto-solution/source
 ./infrastructure/deploy.bash -e $env_name -b $s3_bucket_name -h $cms_admin_email -P $aws_profile -l $cdf_core_stack_name -B -R $region -K $kms_key_owner 
 ```
+
 Await completion -- again about 30 minutes
 The email given above should receive the activation email for FleetManager UI.
 
-12. Run Simulation Manager
+11. Run Simulation Manager
 
 * Fetch some parameters
+
 ```bash
 export simulation_manager_base_url=$(aws cloudformation list-exports --query "Exports[?Name=='cdf-core-$env_name-simulationManager-apiGatewayUrl'].Value" --output text)
 export certificateId=$(aws cloudformation list-exports --query "Exports[?Name=='cms-$env_name-certificateId'].Value" --output text)
@@ -118,8 +126,11 @@ echo $facadeApiFunctionName
 * Copy/Paste these values VERY CAREFULLY into Postman
 
 * Login to the FleetManager app and capture the cognito id token
+
     * open debugger
+
     * inspect "Local Storage" from the "Application" tab
+
     * look for "CognitoIdentity....idToken" and copy the Value -- be sure to "Select All" and Copy, otherwise, intermediate word breaks may copy only part of the token.
 
 _Tokens are generally only good for 60 minutes, if you receive an authorization error in calls, refresh this token._
@@ -132,8 +143,8 @@ _Tokens are generally only good for 60 minutes, if you receive an authorization 
 
 * Send the 'start' simulations request by postman. It may take a few minutes for simulations to start running. The above methods can be used to monitor progress.
 
-
 ### Troubleshooting and problems
+
 * can't log in to ui -- check window.appVariables in debugger console and verify values
 
 * SIM provisioning not completing?  Check cached Postman MAPBOX token, FacadeApiFunctionName, and other params to ensure correctness. Failures are often not surfaced other than with non-function.
