@@ -1,6 +1,4 @@
-# Bring up log for CMS e2e testing
-
-_2020-09-30_
+# Build and Deploy CMS from Source
 
 **NB: all commands BASH shell**
 

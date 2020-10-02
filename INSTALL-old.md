@@ -1,5 +1,8 @@
 # Quick Deploy CMS and Fleet Manager
 
+**DEPRECATED**
+This guide is for the (now old) 'stable' binary release from Apr 2020. Use the new Install-from-Source guide instead.
+
 These notes are for setting up the Automotive Connected Mobility Solution (CMS), including the Fleet Manager Application from pre-built bundles.
 
 ### Resources
