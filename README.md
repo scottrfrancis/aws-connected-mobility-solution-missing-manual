@@ -28,3 +28,7 @@ Read the [Customization Guide](blob/master/Customization.md) to get an understan
 Onboard your own vehicle using the [Create Vehicle Guide](blob/master/create_vehicle.md). A [Postman Collection](blob/master/CMS-Demo.postman_collection.json) is provided to assist with creating Simulations and issuing other API calls when creating vehicles. 
 
 To clean up the UI or otherwise explore data which is stored in Amazon Elasticsearch Service, a [Notebook](blob/master/Elasticsearch+Tools.ipynb) is provided. No instructions for configuring Jupyter, anaconda, or other means for running the notebook, but those are widely available elsewhere.
+
+### more things
+
+The related project [AWS Connected Vehicle Solution Telemetry Demo](https://github.com/scottrfrancis/aws-connected-vehicle-solution-telemetry-demo) can be used in conjunction with CMS or the original [AWS Connected Vehicle Solution](https://aws.amazon.com/solutions/implementations/aws-connected-vehicle-solution/) to send telematics to AWS IoT Greengrass or AWS IoT Core. You may find it necessary to additionally provision IoT Rules and Lambda functions or other mechanisms to adapt the telemetry to CMS.
