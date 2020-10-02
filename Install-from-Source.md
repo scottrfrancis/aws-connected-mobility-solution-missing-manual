@@ -2,7 +2,6 @@
 
 **NB: all commands BASH shell**
 
-1. Fresh Isengard Account
 2. Created Cloud9 env in us-east-1 (region to be used for all deployment)
     -- t3.xl (to speed building, otherwise t3.small is fine); Ubuntu 18.04
     -- shutdown and expand EFS volume -- 25GB -- and restart
