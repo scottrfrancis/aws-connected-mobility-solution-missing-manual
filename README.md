@@ -31,4 +31,4 @@ To clean up the UI or otherwise explore data which is stored in Amazon Elasticse
 
 ### Context Notes
 
-These notes were developed mostly by using a dedicated AWS account with a Cloud 9 instance running as a sort of Bastion box from where various scripts and commands were run. For reference, the instance was set up as t3.xl with Ubuntu 18.04. While nothing is terribly OS-specific or non-portable, you may need to adapt various commands to your environment.
+The related project [AWS Connected Vehicle Solution Telemetry Demo](https://github.com/scottrfrancis/aws-connected-vehicle-solution-telemetry-demo) can be used in conjunction with CMS or the original [AWS Connected Vehicle Solution](https://aws.amazon.com/solutions/implementations/aws-connected-vehicle-solution/) to send telematics to AWS IoT Greengrass or AWS IoT Core. You may find it necessary to additionally provision IoT Rules and Lambda functions or other mechanisms to adapt the telemetry to CMS.
