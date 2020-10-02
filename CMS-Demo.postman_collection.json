@@ -1,0 +1,240 @@
+{
+	"info": {
+		"_postman_id": "b63f67d5-ffe3-4e50-9588-1a12b36e5dc7",
+		"name": "CMS-Demo",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1 - Create-Supplier (AssetLibrary)",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"accept": true,
+					"content-type": true
+				}
+			},
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.aws-cdf-v1.0+json",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/vnd.aws-cdf-v1.0+json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"groupPath\" : \"/auto/suppliers/{{devicemakername}}\",\n    \"parentPath\" : \"/auto/suppliers\",\n    \"templateId\" : \"auto_supplier\",\n    \"name\" : \"{{devicemakername}}\",\n    \"attributes\" : {\n        \"externalId\": \"{{externalId}}\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{assetlibrary_base_url}}/groups",
+					"host": [
+						"{{assetlibrary_base_url}}"
+					],
+					"path": [
+						"groups"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2 - Create-User (Facade)",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"accept": true
+				}
+			},
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{cognito_id_token}}",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/vnd.aws-cdf-v1.0+json",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/vnd.aws-cdf-v1.0+json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\" : \"{{username}}\",\n    \"firstName\" : \"{{firstName}}\",\n    \"lastName\" : \"{{lastName}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{facade_endpoint}}/users",
+					"host": [
+						"{{facade_endpoint}}"
+					],
+					"path": [
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3 - Register-Device (Facade)",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"accept": true
+				}
+			},
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{cognito_id_token}}"
+					},
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/vnd.aws-cdf-v1.0+json"
+					},
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/vnd.aws-cdf-v1.0+json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"templateId\": \"auto_ecu\",\n    \"certificateId\": \"{{certificateId}}\",\n    \"attributes\": {\n        \"type\": \"tcu\",\n        \"model\": \"TCU-1\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{facade_endpoint}}/suppliers/{{externalId}}/devices/{{thingName}}/register",
+					"host": [
+						"{{facade_endpoint}}"
+					],
+					"path": [
+						"suppliers",
+						"{{externalId}}",
+						"devices",
+						"{{thingName}}",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "4 - Activate-Device (Facade)",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"accept": true
+				}
+			},
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"type": "text",
+						"value": "{{cognito_id_token}}"
+					},
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/vnd.aws-cdf-v1.0+json"
+					},
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/vnd.aws-cdf-v1.0+json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"vehicle\": {\n        \"make\": \"DENSO\",\n        \"model\": \"DN\",\n        \"modelYear\": 2019,\n        \"marketCode\": \"NA\",\n        \"vin\": \"KL4CJHSB2DB198124\",\n        \"bodyType\": \"Saloon\",\n        \"fuelType\": \"Gas\",\n        \"transmissionType\": \"Auto\",\n        \"transmissionAutoType\": \"7-speed\",\n        \"colorCode\": \"B1B!\",\n        \"iviType\": \"Premium\",\n        \"ecus\": [{\n            \"type\": \"tcu\",\n            \"id\": \"{{thingName}}\",\n            \"softwareVersion\": \"1.9.1\"\n        }]\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{facade_endpoint}}/suppliers/{{externalId}}/devices/{{thingName}}/activate",
+					"host": [
+						"{{facade_endpoint}}"
+					],
+					"path": [
+						"suppliers",
+						"{{externalId}}",
+						"devices",
+						"{{thingName}}",
+						"activate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "5 - Associate-User-Car (AssetLibrary)",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"accept": true,
+					"content-type": true
+				}
+			},
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Accept",
+						"type": "text",
+						"value": "application/vnd.aws-cdf-v1.0+json"
+					},
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/vnd.aws-cdf-v1.0+json"
+					}
+				],
+				"url": {
+					"raw": "{{assetlibrary_base_url}}/groups/%2Fauto%2Fusers%2F{{username}}/owns/groups/%2Fauto%2Fvehicles%2Fkl4cjhsb2db198124",
+					"host": [
+						"{{assetlibrary_base_url}}"
+					],
+					"path": [
+						"groups",
+						"%2Fauto%2Fusers%2F{{username}}",
+						"owns",
+						"groups",
+						"%2Fauto%2Fvehicles%2Fkl4cjhsb2db198124"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"protocolProfileBehavior": {}
+}
