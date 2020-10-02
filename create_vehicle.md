@@ -6,7 +6,20 @@ To see the response from the Connected Device Framework, open up the AWS IoT Man
 
 1. Get the following endpoints from API Gateway:
     1. CDF Asset Library = {asset_library_endpoint}
+```bash
+aws cloudformation list-exports --query "Exports[?Name=='cdf-core-$env_name-assetLibrary-apiGatewayUrl'].Value" --output text
+```
     2. CDF Auto Facade = {auto_facade_endpoint}
+```bash
+aws cloudformation list-exports --query "Exports[?Name=='cms-$env_name-facade-apiGatewayUrl'].Value" --output text
+```
+
+2. Login to the FleetManager app and capture the cognito id token
+    * open debugger
+    * inspect "Local Storage" from the "Application" tab
+    * look for "CognitoIdentity....idToken" and copy the Value -- be sure to "Select All" and Copy, otherwise, intermediate word breaks may copy only part of the token.
+
+_Tokens are generally only good for 60 minutes, if you receive an authorization error in calls, refresh this token._
     
 2. Create a supplier in the **Asset Library API**:
     1. `curl -X POST -H "Accept: application/vnd.aws-cdf-v1.0+json" -H "Content-Type: application/vnd.aws-cdf-v1.0+json" https://{asset_library_endpoint}/Prod/groups -d @newsupplier.json`
@@ -38,6 +51,7 @@ To see the response from the Connected Device Framework, open up the AWS IoT Man
     "city" : "<city>"
 }
 ```
+_Only `username, firstName, lastName` are required. Use Approved Fictious Names when not for real person._
 
 4. Create a new certificate in AWS IoT, and attach the CvraTcuDevicePolicy policy to it ( created by CMS CloudFormation deployment )
 

@@ -5,7 +5,7 @@ _2020-09-30_
 **NB: all commands BASH shell**
 
 1. Fresh Isengard Account
-2. Added Hassan as Admin User
+~~2. Added Hassan as Admin User~~
 3. Created Cloud9 env in us-east-1 (region to be used for all deployment)
     -- t3.xl (to speed building, otherwise t3.small is fine); Ubuntu 18.04
     -- shutdown and expand EFS volume -- 25GB -- and restart
@@ -26,7 +26,7 @@ sudo apt install -y jq
 
 * aws cli@v2, python3@3.6.9, docker@19.03.13, git@2.17.1 -- already installed
     
-6. Upload CSV credentials for code repos to C9 
+6. Have CSV credentials for code repos handy to copy/paste when cloning repos 
 7. Clone Repos as per the Quip doc (copy/paste credentials when asked)
 (copied from quip guide)
 ```bash
@@ -105,9 +105,42 @@ cd ~/environment/cdf-auto-solution/source
 Await completion -- again about 30 minutes
 The email given above should receive the activation email for FleetManager UI.
 
+12. Run Simulation Manager
+
+* Fetch some parameters
+```bash
+export simulation_manager_base_url=$(aws cloudformation list-exports --query "Exports[?Name=='cdf-core-$env_name-simulationManager-apiGatewayUrl'].Value" --output text)
+export certificateId=$(aws cloudformation list-exports --query "Exports[?Name=='cms-$env_name-certificateId'].Value" --output text)
+export facadeApiFunctionName=$(aws cloudformation list-exports --query "Exports[?Name=='cms-$env_name-facade-restApiFunctionName'].Value" --output text)
+
+echo $simulation_manager_base_url
+echo $certificateId
+echo $facadeApiFunctionName
+```
+
+* Copy/Paste these values VERY CAREFULLY into Postman
+
+* Login to the FleetManager app and capture the cognito id token
+    * open debugger
+    * inspect "Local Storage" from the "Application" tab
+    * look for "CognitoIdentity....idToken" and copy the Value -- be sure to "Select All" and Copy, otherwise, intermediate word breaks may copy only part of the token.
+
+_Tokens are generally only good for 60 minutes, if you receive an authorization error in calls, refresh this token._
+
+* Inspect the body of the Postman request and adjust `deviceCount` and other parameters as needed.
+
+* Send request by Postman and wait at least 5 minutes for simulations to be provisioned. Meanwhile, copy the simulationId from the response headers and paste into the postman environment.  You can also monitor the ECS tasks, IoT messages, and the UI itself.
+
+* inspect the body of the Run Simulations request and adjust deviceCount as needed.
+
+* Send the 'start' simulations request by postman. It may take a few minutes for simulations to start running. The above methods can be used to monitor progress.
+
+
 ### Troubleshooting and problems
 * can't log in to ui -- check window.appVariables in debugger console and verify values
 
-* SIM provisioning not completing?  Check cached Postman MAPBOX token
+* SIM provisioning not completing?  Check cached Postman MAPBOX token, FacadeApiFunctionName, and other params to ensure correctness. Failures are often not surfaced other than with non-function.
 
 * Failures after CREATE COMPLETE on sed? Check the sed calls at the end of `cdf-auto-solution/source/infrastructure/deploy.bash`, you may need to remove the superfluous default arg `''`
+
+* Don't request MORE threads than you request devices. Could lead to errors.
