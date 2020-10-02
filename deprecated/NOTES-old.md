@@ -1,5 +1,8 @@
 # Bringing up CMS from a mixed guide so capturing steps
 
+**DEPRECATED**
+This guide is for the (now old) 'stable' binary release from Apr 2020. Use the new Install-from-Source guide instead.
+
 ## Repos
 
 | repo/dir | url | branch |
