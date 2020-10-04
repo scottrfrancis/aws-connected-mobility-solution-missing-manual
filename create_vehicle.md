@@ -9,12 +9,12 @@ To see the response from the Connected Device Framework, open up the AWS IoT Man
     
 ```bash
 export asset_library_endpoint=$(aws cloudformation list-exports --query "Exports[?Name=='cdf-core-$env_name-assetLibrary-apiGatewayUrl'].Value" --output text)
-export certificateId=$(aws cloudformation list-exports --query "Exports[?Name=='cms-$env_name-certificateId'].Value" --output text)
 export auto_facade_endpoint=$(aws cloudformation list-exports --query "Exports[?Name=='cms-$env_name-facade-apiGatewayUrl'].Value" --output text)
+export certificateId=$(aws cloudformation list-exports --query "Exports[?Name=='cms-$env_name-certificateId'].Value" --output text)
 
 echo $asset_library_endpoint
-echo $certificateId
 echo $auto_facade_endpoint
+echo $certificateId
 ```
 
 2. Login to the FleetManager app and capture the cognito id token
@@ -41,13 +41,32 @@ _Tokens are generally only good for 60 minutes, if you receive an authorization 
     * username (unique for account)
     * firstName, lastName (for the user)
     
+**Update** and close the environment editor.
 
+6. Open the "1 - Create-Supplier (AssetLibrary)" request from the imported "CMS-Demo" collection. Click **Send.**
+    an empty body with a `204` return code is normal.
+ 
+7. Open the "2 - Create-User (Facade)" request. Click **Send.**
+    if you get an unauthorized error, refresh and reset the `cognito_id_token` value in the environment.
   
-  
-  
-## Method 2 -- will requires some modification
+8. Open the "3 - Register-Device (Facade)" request. Click **Send.**
+    a `201` response with a certificate in the response body is expected.
     
-2. Create a supplier in the **Asset Library API**:
+9. Open the "4 - Activate-Device (Facade)" request. Make any changes desired to the Body of the request. **NB- VIN numbers are verified at multiple steps in CMS and if not correctly formatted, other downstream errors may occur.** Also note that the `vehicle.ecus.type` is hard-coded (`tcu`) to match the IoT Thing Type created when CMS was installed and is further hard-coded in request "3 - Register-Device (Facade)".  
+
+Click **Send.**
+    a `204` response code is normal
+    
+10. Open the "5 - Associate-User-Car (AssetLibrary)" request. Click **Send.**
+    verify the `204` response code
+   
+ **Done**
+ 
+ You may now publish telemetry on `dt/cvra/{thingName}/cardata`. Skip ahead to that section.
+  
+## Method 2 -- will require modification -- these steps are general guidelines
+    
+3. Create a supplier in the **Asset Library API**:
     1. `curl -X POST -H "Accept: application/vnd.aws-cdf-v1.0+json" -H "Content-Type: application/vnd.aws-cdf-v1.0+json" https://{asset_library_endpoint}/Prod/groups -d @newsupplier.json`
     2. newsupplier.json:
 
@@ -63,7 +82,7 @@ _Tokens are generally only good for 60 minutes, if you receive an authorization 
 }
 ```
 
-3. Create a User using **Facade API**:
+4. Create a User using **Facade API**:
     1. `curl -X POST -H "Accept: application/vnd.aws-cdf-v1.0+json" -H "Content-Type: application/vnd.aws-cdf-v1.0+json" https://{auto_facade_endpoint}/Prod/users -d @newuser.json`
     2. newuser.json:
 
@@ -79,9 +98,9 @@ _Tokens are generally only good for 60 minutes, if you receive an authorization 
 ```
 _Only `username, firstName, lastName` are required. Use Approved Fictious Names when not for real person._
 
-4. Create a new certificate in AWS IoT, and attach the CvraTcuDevicePolicy policy to it ( created by CMS CloudFormation deployment )
+5. Create a new certificate in AWS IoT, and attach the CvraTcuDevicePolicy policy to it ( created by CMS CloudFormation deployment )
 
-5. Register a device using **Facade API**:
+6. Register a device using **Facade API**:
     1. `curl -X POST -H "Accept: application/vnd.aws-cdf-v1.0+json" -H "Content-Type: application/vnd.aws-cdf-v1.0+json" https://{auto_facade_endpoint}/Prod/suppliers/<supplier>/devices/<Thing Name>/register -d @newdeviceregisterfacade.json`
     2. Replace `<supplier>` with the externalId set in step 1. Replace `<Thing Name>` with the desired Thing Name.
     3. This will create the Thing in the AWS IoT Device registry of type ‘tcu’
@@ -98,7 +117,7 @@ _Only `username, firstName, lastName` are required. Use Approved Fictious Names 
 }
 ```
 
-6. Activate the device using **Facade API**:
+7. Activate the device using **Facade API**:
     1. `curl -X POST -H "Accept: application/vnd.aws-cdf-v1.0+json" -H "Content-Type: application/vnd.aws-cdf-v1.0+json" https://{auto_facade_endpoint}/Prod/suppliers/<supplier>/devices/<ThingName>/activate -d @newdevicactivatefacade.json`
     2. Replace `<supplier>` with the externalId set in step 1. Replace `<Thing Name>` with Thing Name created in step 5.
     3. VIN number must be valid, no errors will throw if it’s not valid. Recommend using a pre-defined Vin number. Replace `<Thing Name>` with Thing created in step 4.
@@ -127,7 +146,7 @@ _Only `username, firstName, lastName` are required. Use Approved Fictious Names 
 }
 ```
 
-7. Sell the car to a user / associate with the user created in step 2, using **AssetLibrary API** (register vehicle to owner Facade API is broken in stable branch):
+8. Sell the car to a user / associate with the user created in step 2, using **AssetLibrary API** (register vehicle to owner Facade API is broken in stable branch):
     1. `curl -X PUT -H "Accept: application/vnd.aws-cdf-v1.0+json" -H "Content-Type: application/vnd.aws-cdf-v1.0+json" https://{asset_library_endpoint}/Prod/groups/<full path to user>/owns/groups/<full path to vehicle>`
     2. Replace <full path to user> with the *full path* to the asset library group, including URL encoded slashes, from the user created in Step 2. You can get the full URL encoded path  from the MQTT message that is published from CDF after User creation in step 2.
     3. Replace <full path to vehicle> with the *full path* to the asset library group, including URL encoded slashes, from the vehicle created in Step 5. You can get the full URL encoded path  from the MQTT message that is published from CDF after Vehicle creation in step 5. 
@@ -138,8 +157,10 @@ _Only `username, firstName, lastName` are required. Use Approved Fictious Names 
         4. URL encode for / is %2F
         5. Include leading /
         
-8. Publish telemetry on the topic  `dt/cvra/<Thing Name>/cardata`
-    1. Replace <Thing Name> with your Thing Name
+## Publish Telemetry (after either Method 1 or 2)    
+    
+Publish telemetry on the topic  `dt/cvra/{thingName}/cardata`
+    * Replace {thingName} with your Thing Name as Activated in the '{{facade_endpoint}}/suppliers/{{exernalId}}/devices/{{thingName}}/register' call (Postman request #3).
 
 ```
 {
@@ -204,4 +225,4 @@ _Only `username, firstName, lastName` are required. Use Approved Fictious Names 
 }
 ```
 
-9. Vehicle should be in CMS now
+**Observe Vehicle location in CMS Fleet Manager UI**
