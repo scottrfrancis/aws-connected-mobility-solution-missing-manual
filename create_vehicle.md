@@ -5,13 +5,16 @@ To see the response from the Connected Device Framework, open up the AWS IoT Man
 *These steps work on stable branch, have not been tested with development/head branch.*
 
 1. Get the following endpoints from API Gateway:
-    1. CDF Asset Library = {asset_library_endpoint}
+    * CDF Asset Library = {asset_library_endpoint}, CDF Auto Facade = {auto_facade_endpoint}, {certificateId}
+    
 ```bash
-aws cloudformation list-exports --query "Exports[?Name=='cdf-core-$env_name-assetLibrary-apiGatewayUrl'].Value" --output text
-```
-    2. CDF Auto Facade = {auto_facade_endpoint}
-```bash
-aws cloudformation list-exports --query "Exports[?Name=='cms-$env_name-facade-apiGatewayUrl'].Value" --output text
+export asset_library_endpoint=$(aws cloudformation list-exports --query "Exports[?Name=='cdf-core-$env_name-assetLibrary-apiGatewayUrl'].Value" --output text)
+export certificateId=$(aws cloudformation list-exports --query "Exports[?Name=='cms-$env_name-certificateId'].Value" --output text)
+export auto_facade_endpoint=$(aws cloudformation list-exports --query "Exports[?Name=='cms-$env_name-facade-apiGatewayUrl'].Value" --output text)
+
+echo $asset_library_endpoint
+echo $certificateId
+echo $auto_facade_endpoint
 ```
 
 2. Login to the FleetManager app and capture the cognito id token
@@ -20,6 +23,29 @@ aws cloudformation list-exports --query "Exports[?Name=='cms-$env_name-facade-ap
     * look for "CognitoIdentity....idToken" and copy the Value -- be sure to "Select All" and Copy, otherwise, intermediate word breaks may copy only part of the token.
 
 _Tokens are generally only good for 60 minutes, if you receive an authorization error in calls, refresh this token._
+    
+## Method 1 [Recommended]
+
+3. Open Postman and import the [CMS-Demo.postman_collection.json](#)
+
+4. From the 'Environment' Icon (eyeball) **Edit** the 'CMS-Demo-xxx' environment and set the current values as collected in previous steps for
+    * assetlibrary
+    * facade_endpoint
+    * certificateId
+    * cognito_id_token
+ 
+5. Additionally set environment values of your choice fo
+    * devicemakername (can be anything)
+    * externalId (must be unique like a serial number or guid or append the account number for uniqueness)
+    * thingname (unique for account, this is how your device will publish data)
+    * username (unique for account)
+    * firstName, lastName (for the user)
+    
+
+  
+  
+  
+## Method 2 -- will requires some modification
     
 2. Create a supplier in the **Asset Library API**:
     1. `curl -X POST -H "Accept: application/vnd.aws-cdf-v1.0+json" -H "Content-Type: application/vnd.aws-cdf-v1.0+json" https://{asset_library_endpoint}/Prod/groups -d @newsupplier.json`
