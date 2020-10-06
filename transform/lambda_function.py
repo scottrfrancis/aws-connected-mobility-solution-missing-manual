@@ -3,21 +3,42 @@ import json
 import logging
 import math
 import os
+from dict_recursive_update import recursive_update
 import sys
 import time
 
-"""
-must manually add IOT analytics to call lambda
 
-aws lambda add-permission --function-name nxp-sim-to-CMS --action lambda:InvokeFunction --statement-id iotanalytics --principal iotanalytics.amazonaws.com
-""" 
+# Defaults.. overridable with environment vars
+#
+region = os.environ.get('Region', 'us-east-1')
+topic = os.environ.get('TopicTemplate', 'dt/cvra/{deviceid}/cardata')
+deviceid = os.environ.get('DeviceId', 'goldbox')
+delay = os.environ.get('Delay', 0.45)
 
 # test event
-test = {'deviceid': 'ECU-AWS-2014-DLK4MXS_O_', 'timestamp': '2020-09-17T19:18:34.034Z', 
+test_old = {'deviceid': 'ECU-AWS-2014-DLK4MXS_O_', 'timestamp': '2020-09-17T19:18:34.034Z', 
 'Engine Torque': '0', 'Motor Torque': '6.462857143', 'Accel': '0.0078', 'Decel': '2.98E-151', 'speed_ mph': '15.35819998', 
 'batt_soc': '79.97736836', 'batt_current': '1.6146311', 'batt_voltage': '381.4785617', 
 'X_pos': '54.17729085', 'Y_Pos': '-11.69713948', 'Odometer': '200.34'}
 
+test = {
+  # supplied by IoT Rule SQL
+  'deviceid': 'goldbox', 
+  'timestamp': '2020-09-17T19:18:34.034Z', 
+  # from GBII 
+  "engine-torque": 135,
+  "motor-torque": 135,
+  "accelerate": 67.5,
+  "decelerate": 67.5,
+  "speed-mph": 13.499999,
+  "battery-soc": 40.499999,
+  "battery-current": 31.05,
+  "battery-voltage": 62.1,
+  "gps-x-pos": -83.692098,
+  "gps-y-pos": 42.306595
+}
+
+# a proper template sample
 template = {
   "MessageId": "5AZSL56XXKB10000-2020-09-25T17:12:39.958Z",
   "SimulationId": "vqRX_CnYn",
@@ -80,23 +101,15 @@ template = {
   "OilTemp": 300.57613602390444
 }
 
+#
+# transforms -- various functions used to adjust formats, scale, etc.
+#
 
+def mDeg_to_Deg(x):
+  return float(x)/1000.0
 
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-streamHandler = logging.StreamHandler(stream=sys.stdout)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-streamHandler.setFormatter(formatter)
-logger.addHandler(streamHandler)
-
-# can also look this up in Dynamo -- cdf-simulation-devices-development
-# simulationId = os.environ.get('SimulationId', 'EJdhw1c_S')     
-# vin = os.environ.get('VIN', '1AZZH82ZXCC10000')
-# tripId = os.environ.get('TripId', "MzVoJP847")
-
-simulationId = template['SimulationId']
-vin = template['VIN']
-tripId = template['TripId']
+def mphToKph(s):
+    return abs(float(s))*1.60934
 
 #longitudeMin:-83.699294,latitudeMax:42.30272
 # Curt: 42.299845, -83.698849
@@ -107,67 +120,144 @@ origin = {
     "Heading": 0,
     "Speed": 0
   }
-region = os.environ.get('Region', 'us-east-1')
-topic = os.environ.get('TopicTemplate', 'dt/cvra/{deviceid}/cardata')
-
-  
-client = boto3.client('iot-data', region)
-
 # X increases to E
 # Y increases to S
-def offsetFromOrigin(o, d):
 #  Earth’s radius, sphere
-    R=6378137.0    
-    pos = o.copy()
-    
-    pos['Latitude'] = float(o['Latitude']) + (float(d['x_m'])/(R*math.cos(math.pi*float(o['Latitude'])/180)))*(180/math.pi)
-    pos['Longitude'] = float(o['Longitude']) - (float(d['y_m'])/R)*(180/math.pi)
+R=6378137.0  
 
-    return pos 
- 
-def mphToKph(s):
-    return abs(s)*1.60934
+def latOffset_to_Deg(x_m):
+  global origin, R
+  return float(origin['Latitude']) + (float(x_m)/(R*math.cos(math.pi*float(origin['Latitude'])/180)))*(180/math.pi)
 
-def transformEvent(e):
-    global origin, simulationId, template, tripId, vin
-    
-    t = template.copy()    
-    # not all properties are updated from template
-    t['SimulationId'] = simulationId
-    t['CreationTimeStamp'] = e['timestamp']
-    t['SendTimeStamp'] = t['CreationTimeStamp']
+def lonOffset_to_Deg(y_m):
+  global origin, R
+  return float(origin['Longitude']) - (float(y_m)/R)*(180/math.pi)
 
-    t['VIN'] = vin
-    t['MessageId'] = f"{t['VIN']}-{t['CreationTimeStamp']}"
-    t['TripId'] = tripId
+# transformMapper maps incoming fieldnames to outgoing field names
+# -- note 'dot' notation
+#
+# Format is a dict with key for the incoming field then a dict with
+# transform function and outgoing keyname
+#
+# only handes 1::1 transforms.  for combinations or fan -in/-out use code
+#
+TransformMapper = {
+  'deviceid': {
+     'transform': None, 'output': None },
+  'timestamp': {
+     'transform': None, 'output': 'CreationTimeStamp' },
+  "engine-torque":{
+     'transform': None, 'output': None },
+  "motor-torque":{
+     'transform': None, 'output': None },
+  "accelerate": {
+     'transform': None, 'output': 'Acceleration.Longitudinal.accel' },
+  "decelerate": {
+     'transform': None, 'output': 'Acceleration.Longitudinal.decel' },
+  "speed-mph": {
+     'transform': mphToKph, 'output': 'GeoLocation.Speed' },
+  "battery-soc": {
+     'transform': None, 'output': None },
+  "battery-current":{
+     'transform': None, 'output': None },
+  "battery-voltage": {
+     'transform': None, 'output': None },
+  "gps-x-pos": {
+     'transform': mDeg_to_Deg, 'output': 'GeoLocation.Longitude' },
+  "gps-y-pos": {
+     'transform': mDeg_to_Deg, 'output': 'GeoLocation.Latitude' },
+  # older events
+  'X_pos': { 
+    'transform': latOffset_to_Deg, 'output': 'GeoLocation.Latitude' },
+  'Y_Pos': {
+    'transform': lonOffset_to_Deg, 'output': 'GeoLocation.Longitude' },
+  'speed_ mph': {
+    'transform': mphToKph, 'output': 'GeoLocation.Speed' }
+}
 
-    t['GeoLocation'] = offsetFromOrigin(origin, {'x_m': e['X_pos'], 'y_m': e['Y_Pos']})
-    t['GeoLocation']['Speed'] = mphToKph(float(e['speed_ mph']))
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+streamHandler = logging.StreamHandler(stream=sys.stdout)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+streamHandler.setFormatter(formatter)
+logger.addHandler(streamHandler)
 
-    t['Acceleration']['MaxLongitudinal']['Value'] = float(e['Accel']) - float(e['Decel'])
+client = boto3.client('iot-data', region)
+
+# can also look this up in Dynamo -- cdf-simulation-devices-development
+# simulationId = os.environ.get('SimulationId', 'EJdhw1c_S')     
+# vin = os.environ.get('VIN', '1AZZH82ZXCC10000')
+# tripId = os.environ.get('TripId', "MzVoJP847")
+simulationId = template['SimulationId']
+vin = template['VIN']
+tripId = template['TripId']
+
+
+def dotExpand(k, v):
+  if len(k) == 0:
+    return v
     
-    t['Speed']['Max'] = t['GeoLocation']['Speed']
+  keys = k.split('.')
+  key = keys.pop(0)
+  
+  if len(keys) == 0:
+    return { key: v }
+
+  return { key: dotExpand(".".join(keys), v) }
+  
+
+def transform(k, v):
+  global TransformMapper
+  out = None
+  
+  if k in TransformMapper:
+    key = TransformMapper[k].get('output') 
+    if key:
+      f = TransformMapper[k].get('transform')
+      val = f(v) if f else v
     
-    t['Odometer']['Metres'] = float(e['Odometer'])
-    
-    # [ e.pop(k) for k in ['timestamp', 'deviceid', 'X_pos', 'Y_Pos', 'speed_ mph', 'Accel', 'Decel', 'Odometer'] ]
-    # t.update(e)
-    t['batt_soc'] = e['batt_soc']
-    
-    return t
+      out = dotExpand(key, val)
+
+  return out
+
+
+def mapTransformEvent(e):
+  global template, simulationId, vin, tripId
+  
+  t = template.copy()
+  [ recursive_update(t, o)  for o in [ transform(k, e[k]) for k in e.keys() ] if o ]
+  
+  # not all properties are updated from template
+  t['SimulationId'] = simulationId
+
+  t['VIN'] = vin
+  t['MessageId'] = f"{t['VIN']}-{t['CreationTimeStamp']}"
+  t['TripId'] = tripId
+
+  # some fields are duplicated
+  t['Speed']['Max'] = t['GeoLocation']['Speed']
+  t['SendTimeStamp'] = t['CreationTimeStamp']
+  
+  # and some get combined
+  if 'Longitudinal' in t['Acceleration']:
+    la = t['Acceleration'].pop('Longitudinal')
+    t['Acceleration']['MaxLongitudinal']['Value'] = float(la.get('accel', 0.0)) - float(la.get('decel', 0.0))
+
+  return t
+  
 
 def lambda_handler(event, context):
-    logger.info(f"received event {event} in {context}")
+  global deviceid, delay
+  logger.info(f"received event {event} in {context}")
 
-    # deviceid = event['deviceid']
-    deviceid = 'ECU-AWS-2014-DQAHOYSERV'
-    msg = transformEvent(event)
-    logger.info(f"new event: {msg}")
-    
-    # send to proper topic
-    res = client.publish( topic=topic.format(deviceid=deviceid), qos=0, payload=json.dumps(msg) )
-    
-    time.sleep(0.45)
+  msg = mapTransformEvent(event)
+  logger.info(f"new event: {msg}")
+  
+  # send to proper topic
+  res = client.publish( topic=topic.format(deviceid=deviceid), qos=0, payload=json.dumps(msg) )
+  
+  time.sleep(delay)
 
 if __name__ == "__main__":
+    lambda_handler(test_old, {})
     lambda_handler(test, {})
