@@ -8,6 +8,8 @@ To see the response from the Connected Device Framework, open up the AWS IoT Man
     * CDF Asset Library = {asset_library_endpoint}, CDF Auto Facade = {auto_facade_endpoint}, {certificateId}
     
 ```bash
+export env_name='development' # or whatever your env is...
+
 export asset_library_endpoint=$(aws cloudformation list-exports --query "Exports[?Name=='cdf-core-$env_name-assetLibrary-apiGatewayUrl'].Value" --output text)
 export auto_facade_endpoint=$(aws cloudformation list-exports --query "Exports[?Name=='cms-$env_name-facade-apiGatewayUrl'].Value" --output text)
 export certificateId=$(aws cloudformation list-exports --query "Exports[?Name=='cms-$env_name-certificateId'].Value" --output text)
