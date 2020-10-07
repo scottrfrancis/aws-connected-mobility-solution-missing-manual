@@ -12,7 +12,7 @@ import time
 #
 region = os.environ.get('Region', 'us-east-1')
 topic = os.environ.get('TopicTemplate', 'dt/cvra/{deviceid}/cardata')
-deviceid = os.environ.get('DeviceId', 'goldbox')
+# deviceid = os.environ.get('DeviceId', 'goldbox')
 delay = os.environ.get('Delay', 0.45)
 
 # test event
@@ -104,6 +104,8 @@ template = {
 #
 # transforms -- various functions used to adjust formats, scale, etc.
 #
+def cast_to_Float(x):
+  return float(x)
 
 def mDeg_to_Deg(x):
   return float(x)/1000.0
@@ -132,6 +134,14 @@ def latOffset_to_Deg(x_m):
 def lonOffset_to_Deg(y_m):
   global origin, R
   return float(origin['Longitude']) - (float(y_m)/R)*(180/math.pi)
+  
+def deviceId_to_VIN(d):
+  m = { 'goldcloud-telemetry' : 'NX4CJHSB2DB198124',    # alejandro's real goldbox
+        'goldbox': 'KL4CJHSB2DB198124'      # scott's sim from CSV
+  }
+  
+  return m.get(d, '5AZSL56XXKB10000')
+        
 
 # transformMapper maps incoming fieldnames to outgoing field names
 # -- note 'dot' notation
@@ -143,7 +153,7 @@ def lonOffset_to_Deg(y_m):
 #
 TransformMapper = {
   'deviceid': {
-     'transform': None, 'output': None },
+     'transform': deviceId_to_VIN, 'output': 'VIN' },
   'timestamp': {
      'transform': None, 'output': 'CreationTimeStamp' },
   "engine-torque":{
@@ -173,6 +183,9 @@ TransformMapper = {
     'transform': lonOffset_to_Deg, 'output': 'GeoLocation.Longitude' },
   'speed_ mph': {
     'transform': mphToKph, 'output': 'GeoLocation.Speed' }
+  # common?
+  ,'Odometer': {
+    'transform': cast_to_Float, 'output': 'Odometer.Metres' }
 }
 
 logger = logging.getLogger()
@@ -184,12 +197,7 @@ logger.addHandler(streamHandler)
 
 client = boto3.client('iot-data', region)
 
-# can also look this up in Dynamo -- cdf-simulation-devices-development
-# simulationId = os.environ.get('SimulationId', 'EJdhw1c_S')     
-# vin = os.environ.get('VIN', '1AZZH82ZXCC10000')
-# tripId = os.environ.get('TripId', "MzVoJP847")
 simulationId = template['SimulationId']
-vin = template['VIN']
 tripId = template['TripId']
 
 
@@ -222,7 +230,7 @@ def transform(k, v):
 
 
 def mapTransformEvent(e):
-  global template, simulationId, vin, tripId
+  global template, simulationId, tripId
   
   t = template.copy()
   [ recursive_update(t, o)  for o in [ transform(k, e[k]) for k in e.keys() ] if o ]
@@ -230,7 +238,6 @@ def mapTransformEvent(e):
   # not all properties are updated from template
   t['SimulationId'] = simulationId
 
-  t['VIN'] = vin
   t['MessageId'] = f"{t['VIN']}-{t['CreationTimeStamp']}"
   t['TripId'] = tripId
 
@@ -247,13 +254,14 @@ def mapTransformEvent(e):
   
 
 def lambda_handler(event, context):
-  global deviceid, delay
+  global delay
   logger.info(f"received event {event} in {context}")
 
   msg = mapTransformEvent(event)
   logger.info(f"new event: {msg}")
   
   # send to proper topic
+  deviceid = event.get('deviceid', 'goldboxii')
   res = client.publish( topic=topic.format(deviceid=deviceid), qos=0, payload=json.dumps(msg) )
   
   time.sleep(delay)
