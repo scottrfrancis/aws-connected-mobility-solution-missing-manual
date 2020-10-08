@@ -5,7 +5,7 @@
 1. Created Cloud9 env in us-east-1 (region to be used for all deployment)
     -- t3.xl (to speed building, otherwise t3.small is fine); Ubuntu 18.04
     -- shutdown and expand EFS volume -- 25GB -- and restart
-2. Will follow 'approach 1' from the [CMS Developmet Guide](https://quip-amazon.com/hLrnALX7bgCd/CMS-Development)
+2. Will follow 'approach 1' from the [CMS Development Guide](https://quip-amazon.com/hLrnALX7bgCd/CMS-Development)
 3. Install Dependencies
 
     * pnmp@3.5.3, nvm for Node@12.18.2, jq 
