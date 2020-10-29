@@ -12,7 +12,6 @@ import time
 #
 region = os.environ.get('Region', 'us-east-1')
 topic = os.environ.get('TopicTemplate', 'dt/cvra/{deviceid}/cardata')
-# deviceid = os.environ.get('DeviceId', 'goldbox')
 delay = os.environ.get('Delay', 0.45)
 
 # test event
@@ -23,7 +22,7 @@ test_old = {'deviceid': 'ECU-AWS-2014-DLK4MXS_O_', 'timestamp': '2020-09-17T19:1
 
 test = {
   # supplied by IoT Rule SQL
-  'deviceid': 'goldbox', 
+  'deviceid': 'device', 
   'timestamp': '2020-09-17T19:18:34.034Z', 
   # from GBII 
   "engine-torque": 135,
@@ -113,8 +112,7 @@ def mDeg_to_Deg(x):
 def mphToKph(s):
     return abs(float(s))*1.60934
 
-#longitudeMin:-83.699294,latitudeMax:42.30272
-# Curt: 42.299845, -83.698849
+#longitudeMin: 42.299845, -83.698849
 origin = {
     "Latitude":  42.299845,
     "Longitude": -83.698849,
